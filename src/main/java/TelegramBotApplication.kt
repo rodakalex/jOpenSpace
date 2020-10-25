@@ -10,6 +10,7 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardRem
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardButton
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardRow
 import java.io.File
+import java.net.URL
 
 
 fun main() {
@@ -28,6 +29,12 @@ class Bot : TelegramLongPollingBot() {
         return "1357410487:AAG3jRz52vIIaARRdwr-4IShYqHCfTI1ZC8"
     }
 
+    private fun sendGet(param: String): String? {
+        val url = URL("http://127.0.0.1:5000/fgu/$param".replace(" ", "%20"))
+        val answer: JsonObject = parser.parse(StringBuilder(url.readText())) as JsonObject
+        return answer.string("answer")
+    }
+
     override fun onUpdateReceived(p0: Update?) {
 
         when (p0!!.message.text) {
@@ -35,28 +42,44 @@ class Bot : TelegramLongPollingBot() {
             execute(SendMessage()
                     .setChatId(p0.message.chatId)
                     .setText(json.string("greeting"))
-
             )
         }
-        "Вернуться" ->
+        "Вернуться", "Ответ на \"Не мой вопрос\"" ->
 
             execute(SendMessage()
                     .setReplyMarkup(ReplyKeyboardRemove())
                     .setChatId(p0.message.chatId)
                     .setText(json.string("comeback"))
             )
+        "Я полезный?" -> {
+            val keyboard = ReplyKeyboardMarkup()
 
+            keyboard.keyboard = listOf(
+                    KeyboardRow().apply{
+                        add(KeyboardButton("Да"))
+                        add(KeyboardButton("Нет"))
+                        add(KeyboardButton("Не знаю"))
+                    },
+            )
+            keyboard.resizeKeyboard = true
+
+            execute(SendMessage()
+                    .setReplyMarkup(keyboard)
+                    .setChatId(p0.message.chatId)
+                    .setText(json.string("ynidn"))
+            )
+        }
         else ->
             try {
                 val keyboard = ReplyKeyboardMarkup()
 
                 keyboard.keyboard = listOf(
-                        KeyboardRow().apply {
-                            add(KeyboardButton("Первый вопрос"))
-                            add(KeyboardButton("Второй вопрос"))
-                        },
                         KeyboardRow().apply{
                             add(KeyboardButton("Вернуться"))
+                            add(KeyboardButton("Ответ на \"Не мой вопрос\""))
+                        },
+                        KeyboardRow().apply{
+                            add(KeyboardButton("Я полезный?"))
                         }
                 )
 
@@ -65,8 +88,8 @@ class Bot : TelegramLongPollingBot() {
                 execute(SendMessage()
                         .setReplyMarkup(keyboard)
                         .setChatId(p0.message.chatId)
-                        .setText(json.string("ifelse")
-                                ?.replace("***", "\n1. Первый вопрос\n2. Второй вопрос\n")))
+                        .setText((sendGet(p0.message.text))))
+
             } catch (e: Exception) {
                 execute(SendMessage()
                         .setChatId(p0.message.chatId)
